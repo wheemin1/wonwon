@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/file-saver": "^2.0.7",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
