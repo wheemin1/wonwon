@@ -204,11 +204,19 @@ export function Export() {
 
     try {
       showToast('📸 이미지 생성 중...', 'info');
+      
+      // 약간의 지연을 두어 브라우저가 렌더링을 완료하도록 함
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        imageTimeout: 0,
+        removeContainer: true,
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
