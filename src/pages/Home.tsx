@@ -3,8 +3,10 @@ import { db } from '../db';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function Home() {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // 현재 월의 로그 가져오기
@@ -108,30 +110,32 @@ export function Home() {
         </div>
 
         {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7">
           {emptyDays.map((_, i) => (
-            <div key={`empty-${i}`} />
+            <div key={`empty-${i}`} className="border border-gray-300" />
           ))}
           {daysInMonth.map(date => {
             const { total, hasUnpaid, hasLogs } = getDayTotal(date);
             const dayOfWeek = getDay(date);
+            const dateStr = format(date, 'yyyy-MM-dd');
             
             return (
-              <div
+              <button
                 key={date.toISOString()}
-                className={`aspect-square flex flex-col items-center justify-center text-sm rounded-lg ${
-                  hasLogs ? 'bg-gray-50' : ''
+                onClick={() => navigate(`/add?date=${dateStr}`)}
+                className={`min-h-[80px] flex flex-col items-center justify-center text-sm border border-gray-300 cursor-pointer hover:bg-blue-50 transition-colors ${
+                  hasLogs ? 'bg-gray-50' : 'bg-white'
                 }`}
               >
-                <span className={`${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'} font-medium`}>
+                <span className={`${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'} font-bold text-base`}>
                   {format(date, 'd')}
                 </span>
                 {hasLogs && (
-                  <span className={`text-xs font-bold mt-0.5 ${hasUnpaid ? 'text-warning' : 'text-brand'}`}>
+                  <span className={`text-xs font-bold mt-1 ${hasUnpaid ? 'text-warning' : 'text-brand'}`}>
                     {(total / 10000).toFixed(0)}만
                   </span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>

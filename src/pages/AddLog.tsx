@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../db';
 import { format } from 'date-fns';
 import { Check } from 'lucide-react';
@@ -9,7 +9,11 @@ const PRESET_AMOUNTS = [150000, 160000, 180000, 200000];
 
 export function AddLog() {
   const navigate = useNavigate();
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [searchParams] = useSearchParams();
+  
+  // URL에서 날짜 가져오기 (없으면 오늘)
+  const dateFromUrl = searchParams.get('date');
+  const [date, setDate] = useState(dateFromUrl || format(new Date(), 'yyyy-MM-dd'));
   const [location, setLocation] = useState('');
   const [task, setTask] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
