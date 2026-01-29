@@ -205,19 +205,54 @@ export function Export() {
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
       });
 
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
-          link.click();
-          URL.revokeObjectURL(url);
-          showToast('✅ 이미지가 저장되었습니다!', 'success');
-        }
+      // 모바일 호환성을 위해 Promise로 래핑
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png', 1.0);
       });
+
+      if (!blob) {
+        throw new Error('이미지 생성 실패');
+      }
+
+      // 모바일에서 더 안정적인 방법: 직접 다운로드 대신 공유 API 시도
+      if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        try {
+          const file = new File([blob], `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`, { 
+            type: 'image/png' 
+          });
+          await navigator.share({
+            files: [file],
+            title: '노임 청구서',
+          });
+          showToast('✅ 이미지가 공유되었습니다!', 'success');
+          return;
+        } catch (shareError) {
+          // 공유가 취소되거나 실패하면 다운로드 시도
+          console.log('공유 취소 또는 실패, 다운로드 시도');
+        }
+      }
+
+      // 기본 다운로드 방식
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
+      
+      // 모바일 호환성 개선
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // 약간의 지연 후 URL 해제
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      showToast('✅ 이미지가 저장되었습니다!', 'success');
     } catch (error) {
       console.error('이미지 저장 실패:', error);
       showToast('❌ 이미지 저장에 실패했습니다.', 'error');
