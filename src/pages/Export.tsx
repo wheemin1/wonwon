@@ -91,6 +91,8 @@ export function Export() {
   const [showAmount, setShowAmount] = useState(() => 
     getSavedBoolean('export_showAmount', true)
   );
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
   const reportRef = useRef<HTMLDivElement>(null);
 
   // 상태가 변경될 때마다 localStorage에 저장
@@ -209,87 +211,54 @@ export function Export() {
         logging: false,
       });
 
-      // 모바일 호환성을 위해 Promise로 래핑
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/png', 1.0);
-      });
-
-      if (!blob) {
-        throw new Error('이미지 생성 실패');
-      }
-
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
       const fileName = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
       
       // PWA standalone 모드 감지
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                            (window.navigator as any).standalone === true;
 
-      // PWA 모드이거나 모바일인 경우 Web Share API 우선 시도
-      if (navigator.share && (isStandalone || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent))) {
+      // 1. Web Share API 시도 (모바일 & PWA)
+      if (navigator.share && navigator.canShare) {
         try {
+          // data URL을 blob으로 변환
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
           const file = new File([blob], fileName, { type: 'image/png' });
-          await navigator.share({
-            files: [file],
-            title: '노임 청구서',
-            text: '노임 청구서 이미지',
-          });
-          showToast('✅ 이미지가 공유되었습니다!', 'success');
-          return;
+          
+          // 공유 가능 여부 체크
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: '노임 청구서',
+            });
+            showToast('✅ 이미지가 공유되었습니다!', 'success');
+            return;
+          }
         } catch (shareError: any) {
-          // 사용자가 공유를 취소한 경우
           if (shareError.name === 'AbortError') {
             showToast('공유가 취소되었습니다', 'info');
             return;
           }
-          console.log('공유 실패, 대체 방법 시도:', shareError);
+          console.log('Web Share 실패:', shareError);
         }
       }
 
-      // PWA standalone 모드에서 공유 실패 시: data URL로 새 창 열기
+      // 2. PWA 모드: 모달로 이미지 표시
       if (isStandalone) {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        const newWindow = window.open();
-        if (newWindow) {
-          newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>노임 청구서</title>
-                <style>
-                  body { margin: 0; padding: 20px; background: #f5f5f5; }
-                  img { max-width: 100%; height: auto; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-                  .info { text-align: center; margin: 20px; color: #666; font-family: sans-serif; }
-                </style>
-              </head>
-              <body>
-                <div class="info">
-                  <p>📱 이미지를 길게 눌러 저장하세요</p>
-                  <p style="font-size: 12px; margin-top: 10px;">Long-press the image to save</p>
-                </div>
-                <img src="${dataUrl}" alt="노임 청구서" />
-              </body>
-            </html>
-          `);
-          newWindow.document.close();
-          showToast('✅ 새 창에서 이미지를 길게 눌러 저장하세요', 'success');
-          return;
-        }
+        setGeneratedImageUrl(dataUrl);
+        setImageModalOpen(true);
+        showToast('✅ 이미지를 길게 눌러 저장하세요', 'success');
+        return;
       }
 
-      // 일반 브라우저: 기본 다운로드 방식
-      const url = URL.createObjectURL(blob);
+      // 3. 일반 브라우저: 다운로드
       const link = document.createElement('a');
-      link.href = url;
+      link.href = dataUrl;
       link.download = fileName;
-      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 100);
       
       showToast('✅ 이미지가 저장되었습니다!', 'success');
     } catch (error) {
@@ -555,6 +524,36 @@ export function Export() {
             </button>
           </div>
         </>
+      )}
+
+      {/* 이미지 모달 (PWA 모드용) */}
+      {imageModalOpen && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
+          onClick={() => setImageModalOpen(false)}
+        >
+          <div className="w-full max-w-4xl">
+            <div className="bg-white rounded-t-2xl p-4 text-center">
+              <h3 className="text-lg font-bold mb-2">📱 이미지 저장 방법</h3>
+              <p className="text-sm text-gray-600 mb-1">아래 이미지를 <span className="font-bold text-brand">길게 눌러</span> 저장하세요</p>
+              <p className="text-xs text-gray-500">Long-press the image to save</p>
+            </div>
+            <div className="bg-white p-4 overflow-auto max-h-[70vh]">
+              <img 
+                src={generatedImageUrl} 
+                alt="노임 청구서" 
+                className="w-full h-auto"
+                onContextMenu={(e) => e.stopPropagation()}
+              />
+            </div>
+            <button
+              onClick={() => setImageModalOpen(false)}
+              className="w-full bg-gray-800 text-white py-4 rounded-b-2xl font-bold hover:bg-gray-700 transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
