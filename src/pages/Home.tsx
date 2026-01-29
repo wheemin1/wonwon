@@ -277,34 +277,34 @@ export function Home() {
         })()}
       </BottomSheet>
 
-      {/* 하단 요약 바 (Sticky Footer) - 2분할 왕글씨 디자인 */}
+      {/* 하단 요약 바 (Sticky Footer) - 2분할 최적화 디자인 */}
       <div className="fixed bottom-[64px] left-0 right-0 bg-white border-t-2 border-gray-200 z-40 shadow-lg">
         {/* 세금 안내 (작게, 상단) */}
-        <div className="text-center py-1 bg-gray-50">
-          <p className="text-[10px] text-gray-500">
-            {format(currentMonth, 'M월', { locale: ko })} 세금 3.3% 뗀 금액입니다
+        <div className="text-center py-0.5 bg-gray-50">
+          <p className="text-[9px] text-gray-500">
+            {format(currentMonth, 'M월', { locale: ko })} 세금 3.3% 뺀 금액
           </p>
         </div>
         
         {/* 2분할: 왼쪽(근무일수) / 오른쪽(실수령액) */}
         <div className="grid grid-cols-2 divide-x divide-gray-200">
           {/* 왼쪽: 근무일수 */}
-          <div className="py-3 text-center bg-gray-700">
-            <p className="text-xs text-gray-300 mb-1">근무일수</p>
-            <p className="text-4xl font-bold text-white">
+          <div className="py-2 text-center bg-gray-700">
+            <p className="text-[10px] text-gray-300 mb-0.5">근무일수</p>
+            <p className="text-2xl font-bold text-white">
               {monthlySummary.totalDays}일
             </p>
           </div>
           
           {/* 오른쪽: 실수령 예상액 */}
-          <div className="py-3 text-center bg-sky-400">
-            <p className="text-xs text-white/80 mb-1">실수령 예상</p>
-            <p className="text-3xl font-bold text-white">
+          <div className="py-2 text-center bg-sky-400">
+            <p className="text-[10px] text-white/80 mb-0.5">실수령 예상</p>
+            <p className="text-xl font-bold text-white">
               {(monthlySummary.totalAmount - monthlySummary.taxAmount).toLocaleString()}원
             </p>
             {stats.unpaid > 0 && (
-              <p className="text-[10px] text-white/90 mt-1">
-                미수금 {stats.unpaid.toLocaleString()}원 포함
+              <p className="text-[9px] text-white/90 mt-0.5">
+                미수금 {stats.unpaid.toLocaleString()}원
               </p>
             )}
           </div>
