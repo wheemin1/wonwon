@@ -84,8 +84,8 @@ export function Home() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
-      <div className="flex-1 flex flex-col overflow-hidden pb-[190px]">
+    <div className="flex flex-col min-h-screen">
+      <div className="flex-1 pb-[140px]">
       {/* 상단 통계 */}
       <div className="flex-shrink-0 bg-gray-50 pt-3 pb-2 px-4">
         <div className="flex items-center justify-between mb-2">
@@ -278,11 +278,11 @@ export function Home() {
         })()}
       </BottomSheet>
 
-      {/* 하단 요약 바 (Sticky Footer) - 2분할 디자인 */}
+      {/* 하단 요약 바 (Sticky Footer) - 2분할 슬림 디자인 */}
       <div className="fixed bottom-[68px] left-0 right-0 bg-white border-t-2 border-gray-200 z-40 shadow-lg">
         {/* 세금 안내 (작게, 상단) */}
-        <div className="text-center py-1.5 bg-gray-100">
-          <p className="text-xs font-medium text-gray-700">
+        <div className="text-center py-1 bg-gray-100">
+          <p className="text-[10px] font-medium text-gray-600">
             {format(currentMonth, 'M월', { locale: ko })} 세금 3.3% 뺀 금액
           </p>
         </div>
@@ -290,21 +290,21 @@ export function Home() {
         {/* 2분할: 왼쪽(근무일수) / 오른쪽(실수령액) */}
         <div className="grid grid-cols-2 divide-x-2 divide-white">
           {/* 왼쪽: 근무일수 */}
-          <div className="py-3 text-center bg-gray-800">
-            <p className="text-xs font-semibold text-gray-300 mb-1">근무일수</p>
-            <p className="text-3xl font-extrabold text-white">
+          <div className="py-2 text-center bg-gray-800">
+            <p className="text-[10px] font-semibold text-gray-300 mb-0.5">근무일수</p>
+            <p className="text-2xl font-extrabold text-white">
               {monthlySummary.totalDays}일
             </p>
           </div>
           
           {/* 오른쪽: 실수령 예상액 */}
-          <div className="py-3 text-center bg-sky-500">
-            <p className="text-xs font-semibold text-white mb-1">실수령 예상</p>
-            <p className="text-3xl font-extrabold text-white">
+          <div className="py-2 text-center bg-sky-500">
+            <p className="text-[10px] font-semibold text-white mb-0.5">실수령 예상</p>
+            <p className="text-2xl font-extrabold text-white">
               {(monthlySummary.totalAmount - monthlySummary.taxAmount).toLocaleString()}원
             </p>
             {stats.unpaid > 0 && (
-              <p className="text-xs font-medium text-white/95 mt-1">
+              <p className="text-[9px] font-medium text-white/95 mt-0.5">
                 미수금 {stats.unpaid.toLocaleString()}원
               </p>
             )}
