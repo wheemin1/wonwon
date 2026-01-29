@@ -218,36 +218,75 @@ export function Export() {
         throw new Error('이미지 생성 실패');
       }
 
-      // 모바일에서 더 안정적인 방법: 직접 다운로드 대신 공유 API 시도
-      if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      const fileName = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
+      
+      // PWA standalone 모드 감지
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           (window.navigator as any).standalone === true;
+
+      // PWA 모드이거나 모바일인 경우 Web Share API 우선 시도
+      if (navigator.share && (isStandalone || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent))) {
         try {
-          const file = new File([blob], `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`, { 
-            type: 'image/png' 
-          });
+          const file = new File([blob], fileName, { type: 'image/png' });
           await navigator.share({
             files: [file],
             title: '노임 청구서',
+            text: '노임 청구서 이미지',
           });
           showToast('✅ 이미지가 공유되었습니다!', 'success');
           return;
-        } catch (shareError) {
-          // 공유가 취소되거나 실패하면 다운로드 시도
-          console.log('공유 취소 또는 실패, 다운로드 시도');
+        } catch (shareError: any) {
+          // 사용자가 공유를 취소한 경우
+          if (shareError.name === 'AbortError') {
+            showToast('공유가 취소되었습니다', 'info');
+            return;
+          }
+          console.log('공유 실패, 대체 방법 시도:', shareError);
         }
       }
 
-      // 기본 다운로드 방식
+      // PWA standalone 모드에서 공유 실패 시: data URL로 새 창 열기
+      if (isStandalone) {
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>노임 청구서</title>
+                <style>
+                  body { margin: 0; padding: 20px; background: #f5f5f5; }
+                  img { max-width: 100%; height: auto; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                  .info { text-align: center; margin: 20px; color: #666; font-family: sans-serif; }
+                </style>
+              </head>
+              <body>
+                <div class="info">
+                  <p>📱 이미지를 길게 눌러 저장하세요</p>
+                  <p style="font-size: 12px; margin-top: 10px;">Long-press the image to save</p>
+                </div>
+                <img src="${dataUrl}" alt="노임 청구서" />
+              </body>
+            </html>
+          `);
+          newWindow.document.close();
+          showToast('✅ 새 창에서 이미지를 길게 눌러 저장하세요', 'success');
+          return;
+        }
+      }
+
+      // 일반 브라우저: 기본 다운로드 방식
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
+      link.download = fileName;
       
-      // 모바일 호환성 개선
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      // 약간의 지연 후 URL 해제
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 100);
