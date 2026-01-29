@@ -6,6 +6,7 @@ import { Export } from './pages/Export';
 import { Settings } from './pages/Settings';
 import { useEffect } from 'react';
 import { initializeSettings } from './db';
+import { ToastProvider } from './components/Toast';
 
 function App() {
   useEffect(() => {
@@ -13,16 +14,18 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/add" element={<AddLog />} />
-          <Route path="/export" element={<Export />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/add" element={<AddLog />} />
+            <Route path="/export" element={<Export />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { db, getSettings, updateSettings } from '../db';
 import { Download, Upload, Trash2 } from 'lucide-react';
 import { saveAs } from 'file-saver';
+import { useToast } from '../components/Toast';
 
 export function Settings() {
+  const { showToast } = useToast();
   const [userName, setUserName] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
@@ -52,10 +54,10 @@ export function Settings() {
       });
 
       saveAs(blob, `일당노트_백업_${new Date().toISOString().split('T')[0]}.json`);
-      alert('✅ 백업 파일이 저장되었습니다!');
+      showToast('✅ 백업 파일이 저장되었습니다!', 'success');
     } catch (error) {
       console.error('백업 실패:', error);
-      alert('❌ 백업에 실패했습니다.');
+      showToast('❌ 백업에 실패했습니다.', 'error');
     }
   };
 
@@ -89,11 +91,11 @@ export function Settings() {
       }
       await db.settings.add(backup.settings);
 
-      alert('✅ 데이터가 복구되었습니다!');
+      showToast('✅ 데이터가 복구되었습니다!', 'success');
       window.location.reload();
     } catch (error) {
       console.error('복구 실패:', error);
-      alert('❌ 복구에 실패했습니다.\n백업 파일을 확인해주세요.');
+      showToast('❌ 복구에 실패했습니다.', 'error');
     }
   };
 
@@ -121,11 +123,11 @@ export function Settings() {
         accountHolder: '',
       });
 
-      alert('✅ 모든 데이터가 삭제되었습니다.');
+      showToast('✅ 모든 데이터가 삭제되었습니다.', 'success');
       window.location.reload();
     } catch (error) {
       console.error('삭제 실패:', error);
-      alert('❌ 삭제에 실패했습니다.');
+      showToast('❌ 삭제에 실패했습니다.', 'error');
     }
   };
 

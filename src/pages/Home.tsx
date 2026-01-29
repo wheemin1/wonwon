@@ -4,10 +4,14 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'dat
 import { ko } from 'date-fns/locale';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import BottomSheet from '../components/BottomSheet';
 
 export function Home() {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isPaymentMode, setIsPaymentMode] = useState(false);
 
   // 현재 월의 로그 가져오기
   const logs = useLiveQuery(
@@ -29,9 +33,32 @@ export function Home() {
     unpaid: logs?.filter(log => !log.isPaid).reduce((sum, log) => sum + log.amount, 0) || 0,
   };
 
+  // 월간 요약 계산
+  const monthlySummary = {
+    totalDays: logs?.filter(log => !log.isDayOff).length || 0, // 휴무 제외
+    totalAmount: logs?.filter(log => !log.isDayOff).reduce((sum, log) => sum + log.amount, 0) || 0,
+    taxAmount: Math.floor((logs?.filter(log => !log.isDayOff).reduce((sum, log) => sum + log.amount, 0) || 0) * 0.033), // 3.3% 세금
+  };
+
   // 결제 상태 토글
   const togglePaid = async (id: number, currentStatus: boolean) => {
     await db.logs.update(id, { isPaid: !currentStatus });
+  };
+
+  // 해당 날짜의 모든 로그 일괄 토글
+  const quickToggleDate = async (dateStr: string) => {
+    const dayLogs = logs?.filter(log => log.date === dateStr) || [];
+    if (dayLogs.length === 0) return;
+    
+    // 하나라도 미수금이 있으면 모두 완료로, 모두 완료면 모두 미수금으로
+    const hasUnpaid = dayLogs.some(log => !log.isPaid);
+    const newStatus = hasUnpaid;
+    
+    for (const log of dayLogs) {
+      if (log.id) {
+        await db.logs.update(log.id, { isPaid: newStatus });
+      }
+    }
   };
 
   // 달력 날짜 생성
@@ -43,97 +70,143 @@ export function Home() {
   const startDayOfWeek = getDay(monthStart);
   const emptyDays = Array(startDayOfWeek).fill(null);
 
-  // 날짜별 로그 합계 계산
-  const getDayTotal = (date: Date) => {
+  // 날짜별 로그 정보 계산
+  const getDayInfo = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayLogs = logs?.filter(log => log.date === dateStr) || [];
+    const locations = [...new Set(dayLogs.map(log => log.location))]; // 중복 제거
     return {
       total: dayLogs.reduce((sum, log) => sum + log.amount, 0),
       hasUnpaid: dayLogs.some(log => !log.isPaid),
-      hasLogs: dayLogs.length > 0
+      hasLogs: dayLogs.length > 0,
+      location: locations.length === 1 ? locations[0] : locations.length > 1 ? `${locations[0]} 외${locations.length - 1}` : ''
     };
   };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* 상단 통계 (고정) */}
-      <div className="sticky top-0 bg-gray-50 pt-4 pb-2 z-10">
-        <h1 className="text-2xl font-bold mb-4">일당노트</h1>
+    <div className="flex flex-col h-screen pb-[140px]">
+      {/* 상단 통계 */}
+      <div className="flex-shrink-0 bg-gray-50 pt-3 pb-2 px-4">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-base font-bold text-gray-700">일당노트</h1>
+          
+          {/* 입금 관리 모드 스위치 */}
+          <button
+            onClick={() => setIsPaymentMode(!isPaymentMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              isPaymentMode 
+                ? 'bg-brand text-white shadow-lg' 
+                : 'bg-white text-gray-600 border border-gray-300'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              isPaymentMode ? 'bg-white' : 'bg-gray-400'
+            }`} />
+            입금관리
+          </button>
+        </div>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {/* 받은 돈 */}
-          <div className="bg-white rounded-2xl shadow-sm p-4">
-            <p className="text-sm text-gray-600 mb-1">받은 돈</p>
-            <p className="text-2xl font-bold text-brand">
+          <div className="bg-white rounded-xl shadow-sm p-2 min-h-[55px] flex flex-col justify-center">
+            <p className="text-[10px] text-gray-500 mb-0.5">받은 돈</p>
+            <p className="text-lg font-bold text-brand break-all">
               {stats.paid.toLocaleString()}원
             </p>
           </div>
 
           {/* 받을 돈 (강조) */}
-          <div className="bg-red-50 rounded-2xl shadow-sm p-4 border-2 border-red-200">
-            <p className="text-sm text-gray-600 mb-1">받을 돈</p>
-            <p className="text-2xl font-bold text-warning">
+          <div className="bg-red-50 rounded-xl shadow-sm p-2 border-2 border-red-200 min-h-[55px] flex flex-col justify-center">
+            <p className="text-[10px] text-gray-500 mb-0.5">받을 돈</p>
+            <p className="text-lg font-bold text-warning break-all">
               {stats.unpaid.toLocaleString()}원
             </p>
           </div>
         </div>
 
         {/* 월 선택 */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-            className="px-4 py-2 text-gray-700 font-medium"
-          >
+            className="px-3 py-2 text-gray-700 font-medium active:bg-gray-100 rounded-lg min-h-[44px]">
             ← 이전
           </button>
-          <h2 className="text-xl font-bold">
+          <h2 className="text-base font-bold">
             {format(currentMonth, 'yyyy년 M월', { locale: ko })}
           </h2>
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-            className="px-4 py-2 text-gray-700 font-medium"
-          >
+            className="px-3 py-2 text-gray-700 font-medium active:bg-gray-100 rounded-lg min-h-[44px]">
             다음 →
           </button>
         </div>
       </div>
 
-      {/* 달력 뷰 */}
-      <div className="bg-white rounded-2xl shadow-sm p-4">
+      {/* 달력 뷰 - 화면 끝까지 채움 */}
+      <div className="flex-1 bg-white mx-4 mb-4 rounded-2xl shadow-sm p-3 flex flex-col overflow-hidden">
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        <div className="grid grid-cols-7 gap-0 mb-1 flex-shrink-0">
           {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
-            <div key={day} className={`text-center text-sm font-medium ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-700'}`}>
+            <div key={day} className={`text-center text-sm font-bold py-1 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-700'}`}>
               {day}
             </div>
           ))}
         </div>
 
-        {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7">
+        {/* 날짜 그리드 - 남은 공간 채움 */}
+        <div className="grid grid-cols-7 flex-1" style={{ gridAutoRows: '1fr' }}>
           {emptyDays.map((_, i) => (
             <div key={`empty-${i}`} className="border border-gray-300" />
           ))}
           {daysInMonth.map(date => {
-            const { total, hasUnpaid, hasLogs } = getDayTotal(date);
+            const { total, hasUnpaid, hasLogs, location } = getDayInfo(date);
             const dayOfWeek = getDay(date);
             const dateStr = format(date, 'yyyy-MM-dd');
             
             return (
               <button
                 key={date.toISOString()}
-                onClick={() => navigate(`/add?date=${dateStr}`)}
-                className={`min-h-[80px] flex flex-col items-center justify-center text-sm border border-gray-300 cursor-pointer hover:bg-blue-50 transition-colors ${
-                  hasLogs ? 'bg-gray-50' : 'bg-white'
+                onClick={() => {
+                  if (hasLogs) {
+                    if (isPaymentMode) {
+                      // 입금 관리 모드: 즉시 토글
+                      quickToggleDate(dateStr);
+                    } else {
+                      // 일반 모드: 상세 보기
+                      setSelectedDate(dateStr);
+                      setIsSheetOpen(true);
+                    }
+                  } else {
+                    // 빈 날짜: 기록하기
+                    navigate(`/add?date=${dateStr}`);
+                  }
+                }}
+                className={`p-1 flex flex-col items-center justify-center text-sm border border-gray-300 cursor-pointer transition-colors ${
+                  hasLogs ? (hasUnpaid ? 'bg-red-50' : 'bg-blue-50') : 'bg-white'
+                } ${
+                  isPaymentMode && hasLogs ? 'active:scale-95' : 'hover:bg-blue-50 active:bg-blue-100'
                 }`}
               >
-                <span className={`${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'} font-bold text-base`}>
+                <span className={`${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'} font-bold text-xl`}>
                   {format(date, 'd')}
                 </span>
                 {hasLogs && (
-                  <span className={`text-xs font-bold mt-1 ${hasUnpaid ? 'text-warning' : 'text-brand'}`}>
-                    {(total / 10000).toFixed(0)}만
-                  </span>
+                  <>
+                    {/* 현장명 (크게) */}
+                    {location && (
+                      <span className={`text-sm font-bold mt-0.5 truncate w-full text-center ${
+                        location === '휴무' ? 'text-red-500' : 'text-gray-900'
+                      }`}>
+                        {location}
+                      </span>
+                    )}
+                    {/* 금액 (작게) - 휴무가 아닌 경우만 */}
+                    {location !== '휴무' && total > 0 && (
+                      <span className={`text-[11px] mt-0.5 ${hasUnpaid ? 'text-warning' : 'text-brand'}`}>
+                        {(total / 10000).toFixed(0)}만
+                      </span>
+                    )}
+                  </>
                 )}
               </button>
             );
@@ -141,56 +214,93 @@ export function Home() {
         </div>
       </div>
 
-      {/* 작업 리스트 */}
-      <div className="space-y-3 pb-4">
-        <h3 className="text-lg font-bold">이달의 근무</h3>
-        {!logs || logs.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-500">
-            아직 기록이 없습니다
-          </div>
-        ) : (
-          logs.map(log => (
-            <div key={log.id} className="bg-white rounded-2xl shadow-sm p-4">
-              <div className="flex items-center justify-between">
-                {/* 왼쪽: 날짜 */}
-                <div className="flex-shrink-0 w-20">
-                  <p className="text-lg font-bold">
-                    {format(new Date(log.date), 'd일')}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {format(new Date(log.date), 'EEE', { locale: ko })}
-                  </p>
-                </div>
+      {/* 바텀 시트 */}
+      <BottomSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
+        {selectedDate && (() => {
+          const dayLogs = logs?.filter(log => log.date === selectedDate) || [];
+          if (dayLogs.length === 0) return null;
 
-                {/* 중앙: 정보 */}
-                <div className="flex-1 px-4">
-                  <p className="font-medium text-gray-900">{log.location}</p>
-                  <p className="text-sm text-gray-600">{log.task}</p>
-                  <p className="text-lg font-bold text-gray-900 mt-1">
-                    {log.amount.toLocaleString()}원
-                  </p>
-                </div>
-
-                {/* 오른쪽: 결제 토글 */}
-                <button
-                  onClick={() => log.id && togglePaid(log.id, log.isPaid)}
-                  className={`min-w-[80px] min-h-[56px] rounded-xl font-bold text-sm transition-all ${
-                    log.isPaid
-                      ? 'bg-brand text-white'
-                      : 'bg-white border-2 border-warning text-warning'
-                  }`}
-                >
-                  {log.isPaid ? '완료' : '미수금'}
-                </button>
+          return (
+            <div className="space-y-4">
+              {/* 날짜 헤더 */}
+              <div className="text-center pb-3 border-b">
+                <h2 className="text-2xl font-bold">
+                  {format(new Date(selectedDate), 'M월 d일 (EEE)', { locale: ko })}
+                </h2>
               </div>
-              {log.memo && (
-                <p className="mt-3 text-sm text-gray-600 pl-20 border-t pt-2">
-                  📝 {log.memo}
-                </p>
-              )}
+
+              {/* 로그 리스트 */}
+              {dayLogs.map(log => (
+                <div key={log.id} className="space-y-3">
+                  {/* 현장 정보 */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-base font-medium text-gray-900 mb-1">{log.location}</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {log.amount.toLocaleString()}원
+                    </p>
+                    {log.memo && (
+                      <p className="mt-2 text-sm text-gray-600 pt-2 border-t border-gray-200">
+                        📝 {log.memo}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 버튼 그룹 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* 수정하기 버튼 */}
+                    <button
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        navigate(`/add?date=${selectedDate}&edit=${log.id}`);
+                      }}
+                      className="min-h-[64px] rounded-2xl font-bold text-lg transition-all active:scale-95 bg-gray-100 text-gray-700 border-2 border-gray-300"
+                    >
+                      ✏️ 수정하기
+                    </button>
+
+                    {/* 대문짝만한 입금확인 버튼 */}
+                    <button
+                      onClick={() => log.id && togglePaid(log.id, log.isPaid)}
+                      className={`min-h-[64px] rounded-2xl font-bold text-lg transition-all active:scale-95 ${
+                        log.isPaid
+                          ? 'bg-brand text-white shadow-lg'
+                          : 'bg-white border-4 border-warning text-warning shadow-lg'
+                      }`}
+                    >
+                      {log.isPaid ? '✓ 입금완료' : '입금확인'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))
-        )}
+          );
+        })()}
+      </BottomSheet>
+
+      {/* 하단 요약 바 (Sticky Footer) - 2줄 디자인 */}
+      <div className="fixed bottom-[64px] left-0 right-0 bg-white border-t-2 border-gray-200 px-4 py-2 z-40 shadow-lg">
+        {/* 윗줄: 근무일 + 세금 제외 안내 (작게) */}
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <span className="text-xs text-gray-600">
+            {format(currentMonth, 'M월', { locale: ko })} 근무 {monthlySummary.totalDays}일
+          </span>
+          <span className="text-xs text-gray-400">·</span>
+          <span className="text-xs text-gray-600">
+            세금 {monthlySummary.taxAmount.toLocaleString()}원 제외
+          </span>
+        </div>
+        
+        {/* 아랫줄: 실수령 예상 금액 (크게) */}
+        <div className="text-center">
+          <p className="text-2xl font-bold text-brand">
+            실수령 예상 {(monthlySummary.totalAmount - monthlySummary.taxAmount).toLocaleString()}원
+          </p>
+          {stats.unpaid > 0 && (
+            <p className="text-xs text-warning mt-0.5">
+              (미수금 {stats.unpaid.toLocaleString()}원 포함)
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ export interface WorkLog {
   task: string;
   amount: number;
   isPaid: boolean;
+  isDayOff?: boolean; // 휴무 여부
   memo?: string;
   createdAt: number;
 }
