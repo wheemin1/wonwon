@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, getSettings } from '../db';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, getDay, addMonths, differenceInMonths } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, getDay, differenceInMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import html2canvas from 'html2canvas';
 import { Download, Copy, Check, Eye, EyeOff } from 'lucide-react';
@@ -223,15 +223,6 @@ export function Export() {
       showToast('❌ 이미지 저장에 실패했습니다.', 'error');
     }
   };
-
-  // 달력 날짜 생성 (시각화용)
-  const monthStart = startOfMonth(new Date(startDate));
-  const monthEnd = endOfMonth(new Date(startDate));
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startDayOfWeek = getDay(monthStart);
-  const emptyDays = Array(startDayOfWeek).fill(null);
-
-  const workedDates = new Set(logs.map(log => log.date));
 
   return (
     <div className="p-4 space-y-6">
