@@ -198,7 +198,7 @@ export function Export() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 이미지로 저장
+  // 이미지로 저장 - 1단계: 이미지 생성 및 모달 표시
   const saveAsImage = async () => {
     if (!reportRef.current) return;
 
@@ -212,47 +212,21 @@ export function Export() {
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
-      const fileName = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
       
       // PWA standalone 모드 감지
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                            (window.navigator as any).standalone === true;
 
-      // 1. Web Share API 시도 (모바일 & PWA)
-      if (navigator.share && navigator.canShare) {
-        try {
-          // data URL을 blob으로 변환
-          const response = await fetch(dataUrl);
-          const blob = await response.blob();
-          const file = new File([blob], fileName, { type: 'image/png' });
-          
-          // 공유 가능 여부 체크
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: '노임 청구서',
-            });
-            showToast('✅ 이미지가 공유되었습니다!', 'success');
-            return;
-          }
-        } catch (shareError: any) {
-          if (shareError.name === 'AbortError') {
-            showToast('공유가 취소되었습니다', 'info');
-            return;
-          }
-          console.log('Web Share 실패:', shareError);
-        }
-      }
-
-      // 2. PWA 모드: 모달로 이미지 표시
-      if (isStandalone) {
+      // PWA 모드이거나 모바일: 모달로 표시
+      if (isStandalone || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         setGeneratedImageUrl(dataUrl);
         setImageModalOpen(true);
-        showToast('✅ 이미지를 길게 눌러 저장하세요', 'success');
+        showToast('✅ 이미지 생성 완료!', 'success');
         return;
       }
 
-      // 3. 일반 브라우저: 다운로드
+      // 일반 브라우저: 즉시 다운로드
+      const fileName = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = fileName;
@@ -264,6 +238,42 @@ export function Export() {
     } catch (error) {
       console.error('이미지 저장 실패:', error);
       showToast('❌ 이미지 저장에 실패했습니다.', 'error');
+    }
+  };
+
+  // 이미지 공유 - 2단계: 모달에서 공유 버튼 클릭
+  const shareImage = async () => {
+    if (!generatedImageUrl) return;
+
+    try {
+      const fileName = `노임청구서_${format(new Date(), 'yyyy-MM-dd')}.png`;
+      
+      // Web Share API 시도
+      if (navigator.share && navigator.canShare) {
+        const response = await fetch(generatedImageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: 'image/png' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: '노임 청구서',
+          });
+          showToast('✅ 이미지가 공유되었습니다!', 'success');
+          setImageModalOpen(false);
+          return;
+        }
+      }
+
+      // 공유 실패 시 안내
+      showToast('💡 이미지를 길게 눌러 저장하세요', 'info');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        showToast('공유가 취소되었습니다', 'info');
+      } else {
+        console.error('공유 실패:', error);
+        showToast('💡 이미지를 길게 눌러 저장하세요', 'info');
+      }
     }
   };
 
@@ -530,15 +540,16 @@ export function Export() {
       {imageModalOpen && (
         <div 
           className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
-          onClick={() => setImageModalOpen(false)}
         >
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-white rounded-t-2xl p-4 text-center">
-              <h3 className="text-lg font-bold mb-2">📱 이미지 저장 방법</h3>
-              <p className="text-sm text-gray-600 mb-1">아래 이미지를 <span className="font-bold text-brand">길게 눌러</span> 저장하세요</p>
-              <p className="text-xs text-gray-500">Long-press the image to save</p>
+              <h3 className="text-lg font-bold mb-2">📱 이미지 저장</h3>
+              <p className="text-sm text-gray-600 mb-1">
+                아래 <span className="font-bold text-brand">[공유하기]</span> 버튼을 눌러 저장하세요
+              </p>
+              <p className="text-xs text-gray-500">또는 이미지를 길게 눌러 저장</p>
             </div>
-            <div className="bg-white p-4 overflow-auto max-h-[70vh]">
+            <div className="bg-white p-4 overflow-auto max-h-[60vh]">
               <img 
                 src={generatedImageUrl} 
                 alt="노임 청구서" 
@@ -546,12 +557,21 @@ export function Export() {
                 onContextMenu={(e) => e.stopPropagation()}
               />
             </div>
-            <button
-              onClick={() => setImageModalOpen(false)}
-              className="w-full bg-gray-800 text-white py-4 rounded-b-2xl font-bold hover:bg-gray-700 transition-colors"
-            >
-              닫기
-            </button>
+            <div className="grid grid-cols-2 gap-2 bg-white p-4 rounded-b-2xl">
+              <button
+                onClick={shareImage}
+                className="bg-brand text-white py-4 rounded-xl font-bold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Download size={20} />
+                공유하기
+              </button>
+              <button
+                onClick={() => setImageModalOpen(false)}
+                className="bg-gray-200 text-gray-800 py-4 rounded-xl font-bold hover:bg-gray-300 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
