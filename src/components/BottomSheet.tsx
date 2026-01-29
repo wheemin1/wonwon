@@ -52,7 +52,7 @@ export default function BottomSheet({ isOpen, onClose, children }: BottomSheetPr
     <>
       {/* 배경 오버레이 */}
       <div
-        className="fixed inset-0 bg-black/50 z-[60] transition-opacity"
+        className="fixed inset-0 bg-black/50 z-[90] transition-opacity"
         onClick={onClose}
       />
       
@@ -62,7 +62,7 @@ export default function BottomSheet({ isOpen, onClose, children }: BottomSheetPr
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[70] transition-transform duration-300 ease-out max-h-[80vh] overflow-y-auto"
+        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[100] transition-transform duration-300 ease-out max-h-[80vh] overflow-y-auto"
         style={{
           animation: isOpen ? 'slideUp 0.3s ease-out' : 'none',
         }}
@@ -73,7 +73,7 @@ export default function BottomSheet({ isOpen, onClose, children }: BottomSheetPr
         </div>
 
         {/* 콘텐츠 */}
-        <div className="px-5 pb-6">
+        <div className="px-5 pb-24">
           {children}
         </div>
       </div>

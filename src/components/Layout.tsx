@@ -33,13 +33,13 @@ export function Layout({ children }: LayoutProps) {
                 <Link
                   key={path}
                   to={path}
-                  className={`flex flex-col items-center justify-center min-h-[64px] py-2 transition-colors active:bg-gray-100 ${
+                  className={`flex flex-col items-center justify-center min-h-[68px] py-2 transition-colors active:bg-gray-100 ${
                     isActive
                       ? 'text-brand'
                       : 'text-gray-500'
                   }`}
                 >
-                  <Icon size={26} strokeWidth={2} />
+                  <Icon size={24} strokeWidth={2} />
                   <span className="text-xs mt-1 font-medium">{label}</span>
                 </Link>
               );

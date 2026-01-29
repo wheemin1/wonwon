@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, getSettings, updateSettings } from '../db';
-import { Download, Upload, Trash2 } from 'lucide-react';
+import { Download, Upload, Trash2, Smartphone } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { useToast } from '../components/Toast';
 
@@ -11,6 +11,27 @@ export function Settings() {
   const [bankAccount, setBankAccount] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  // PWA 설치 가능 이벤트 리스닝
+  useEffect(() => {
+    // 이미 설치되어 있는지 확인
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
 
   // 설정 불러오기
   useEffect(() => {
@@ -131,6 +152,24 @@ export function Settings() {
     }
   };
 
+  // PWA 설치
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) {
+      showToast('이미 설치되었거나 설치할 수 없습니다.', 'info');
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      showToast('✅ 앱이 설치되었습니다!', 'success');
+      setIsInstalled(true);
+    }
+
+    setDeferredPrompt(null);
+  };
+
   return (
     <div className="p-4 space-y-6 pb-8">
       <h1 className="text-2xl font-bold">설정</h1>
@@ -244,6 +283,23 @@ export function Settings() {
           모든 데이터 삭제
         </button>
       </div>
+
+      {/* PWA 설치 */}
+      {!isInstalled && deferredPrompt && (
+        <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+          <h2 className="text-lg font-bold">앱 설치</h2>
+          <p className="text-sm text-gray-600 mb-3">
+            홈 화면에 추가하여 앱처럼 사용하세요
+          </p>
+          <button
+            onClick={handleInstallPWA}
+            className="w-full min-h-[56px] bg-brand text-white font-bold rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+          >
+            <Smartphone size={24} />
+            홈 화면에 추가
+          </button>
+        </div>
+      )}
 
       {/* 앱 정보 */}
       <div className="bg-white rounded-2xl shadow-sm p-4">
