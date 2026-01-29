@@ -285,21 +285,39 @@ export function Settings() {
       </div>
 
       {/* PWA 설치 */}
-      {!isInstalled && deferredPrompt && (
-        <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
-          <h2 className="text-lg font-bold">앱 설치</h2>
-          <p className="text-sm text-gray-600 mb-3">
-            홈 화면에 추가하여 앱처럼 사용하세요
-          </p>
-          <button
-            onClick={handleInstallPWA}
-            className="w-full min-h-[56px] bg-brand text-white font-bold rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-          >
-            <Smartphone size={24} />
-            홈 화면에 추가
-          </button>
-        </div>
-      )}
+      <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <h2 className="text-lg font-bold">앱 설치</h2>
+        {isInstalled ? (
+          <div className="text-center py-4">
+            <p className="text-green-600 font-semibold mb-2">✅ 이미 설치됨</p>
+            <p className="text-sm text-gray-600">
+              앱이 홈 화면에 추가되어 있습니다
+            </p>
+          </div>
+        ) : deferredPrompt ? (
+          <>
+            <p className="text-sm text-gray-600 mb-3">
+              홈 화면에 추가하여 앱처럼 사용하세요
+            </p>
+            <button
+              onClick={handleInstallPWA}
+              className="w-full min-h-[56px] bg-brand text-white font-bold rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <Smartphone size={24} />
+              홈 화면에 추가
+            </button>
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-600 mb-2">
+              💡 PWA 설치 안내
+            </p>
+            <p className="text-xs text-gray-500">
+              브라우저의 메뉴에서 "홈 화면에 추가" 또는 "설치"를 선택하세요
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* 앱 정보 */}
       <div className="bg-white rounded-2xl shadow-sm p-4">
