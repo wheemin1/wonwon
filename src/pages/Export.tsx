@@ -467,7 +467,10 @@ export function Export() {
 
             {/* 전체 합계 */}
             {monthlyDataList.length > 1 && (
-              <div className="bg-gradient-to-r from-blue-500 to-sky-500 rounded-xl p-5 text-white">
+              <div 
+                className="rounded-xl p-5 text-white"
+                style={{ background: 'linear-gradient(to right, #3b82f6, #0ea5e9)' }}
+              >
                 <h3 className="text-xl font-bold mb-3">■ 전체 합계</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -547,7 +550,8 @@ export function Export() {
       {/* 이미지 모달 (PWA 모드용) */}
       {imageModalOpen && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
         >
           <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-white rounded-t-2xl p-4 text-center">
